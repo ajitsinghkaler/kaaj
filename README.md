@@ -29,7 +29,7 @@ git clone <repository-url>
 
 2. Start the application using Docker Compose:
 ```bash
-docker-compose up --build
+docker compose up --build
 ```
 
 This will:

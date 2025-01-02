@@ -58,7 +58,7 @@ async def search_business(business_name: str, db: Session = Depends(get_db)):
                 logger.info("No results found from crawler")
                 return {
                     "source": "crawler",
-                    "data": [],  # Return empty list instead of 404
+                    "data": [],  # Return empty list
                 }
 
             # Store results in database
