@@ -11,10 +11,9 @@ A web application that allows users to search for business information from the 
   - State of formation
   - Principal address
   - Registered agent information
-  - Officers and their roles
   - Filing history
 - Data persistence using PostgreSQL database
-- Modern, responsive user interface
+- User Interface
 
 ## Prerequisites
 
@@ -26,7 +25,6 @@ A web application that allows users to search for business information from the 
 1. Clone the repository:
 ```bash
 git clone <repository-url>
-cd florida-business-search
 ```
 
 2. Start the application using Docker Compose:
@@ -37,13 +35,20 @@ docker-compose up --build
 This will:
 - Start the PostgreSQL database
 - Build and start the Python backend
-- Build and start the React frontend
 - Install all necessary dependencies
 
 3. Access the application:
-- Frontend: http://localhost:3000
 - Backend API: http://localhost:8000
-- API Documentation: http://localhost:8000/docs
+
+4. Access the frontend:
+- Open a new terminal and run:
+```bash
+cd frontend
+npm install
+npm run dev
+```
+- Frontend is running on http://localhost:3000
+
 
 ## Architecture
 
@@ -60,7 +65,7 @@ This will:
 
 ## API Endpoints
 
-- `GET /search/{business_name}`: Search for businesses by name
+- `GET /search/{business_name}`: Search for businesses by playright crawler if not found in database, otherwise return the business from the database
 - `GET /business/{business_id}`: Get detailed information about a specific business
 
 ## Development
@@ -92,14 +97,9 @@ The application includes comprehensive error handling for:
 - Database connection issues
 - API communication errors
 
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
-
-## License
-
-This project is licensed under the MIT License. 
+## Future Improvements
+- Add improved migrations
+- Add useful logging
+- Error handling can be improved
+- Maybe add frontend to the docker compose too for easier setup.
+- Allow searching with vaious types of queries like name, filing number, etc.

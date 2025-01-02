@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey, Date
 from sqlalchemy.orm import relationship, declarative_base
 from datetime import datetime
 
@@ -19,30 +19,16 @@ class Business(Base):
     registered_agent_address = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    officers = relationship("Officer", back_populates="business")
     filing_history = relationship("FilingHistory", back_populates="business")
 
-class Officer(Base):
-    __tablename__ = "officers"
-
-    id = Column(Integer, primary_key=True)
-    business_id = Column(Integer, ForeignKey("businesses.id"))
-    name = Column(String(255), nullable=False)
-    title = Column(String(100))
-    address = Column(Text)
-    created_at = Column(DateTime, default=datetime.utcnow)
-
-    business = relationship("Business", back_populates="officers")
 
 class FilingHistory(Base):
-    __tablename__ = "filing_history"
+    __tablename__ = "filing_histories"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer, primary_key=True, index=True)
     business_id = Column(Integer, ForeignKey("businesses.id"))
-    filing_type = Column(String(100))
-    filing_date = Column(DateTime)
-    effective_date = Column(DateTime)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    filing_type = Column(String)
+    filing_date = Column(Date)
+    document_url = Column(String)
 
     business = relationship("Business", back_populates="filing_history") 

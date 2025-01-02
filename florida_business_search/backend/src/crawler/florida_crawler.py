@@ -11,6 +11,8 @@ logger = logging.getLogger(__name__)
 
 class FloridaBusinessCrawler:
     BASE_URL = "https://search.sunbiz.org/Inquiry/CorporationSearch/ByName"
+    DOCUMENT_BASE_URL = "https://search.sunbiz.org"
+
 
     def __init__(self):
         self.playwright = None
@@ -64,17 +66,38 @@ class FloridaBusinessCrawler:
             await self.initialize()
             await self.page.goto(self.BASE_URL)
             await self.page.fill("#SearchTerm", business_name)
+            # print("Filled search term")
             await self.page.click("input[type='submit'][value='Search Now']")
+            # print("Clicked search button")  # Wait for
             await self.page.wait_for_selector("#search-results")
+            # print("Waited for search results")
 
             # Get all search results
             results = []
-            links = await self.page.query_selector_all("a[title='Go to Detail Screen']")
-
-            for link in links[:5]:  # Limit to first 5 results
-                await link.click()
+            # Get all rows from the search results table
+            rows = await self.page.query_selector_all("#search-results tbody tr")
+            # print(f"Found {len(rows)} search results")
+            
+            # Store hrefs of active businesses only
+            hrefs = []
+            for row in rows[:5]:  # Still limit to first 5 results
+                status = await row.query_selector("td:nth-child(3)")
+                status_text = await status.text_content()
+                if status_text.strip().lower() == "active":
+                    link = await row.query_selector("a[title='Go to Detail Screen']")
+                    if link:
+                        href = await link.get_attribute('href')
+                        absolute_url = f"https://search.sunbiz.org{href}"
+                        hrefs.append(absolute_url)
+            
+            # print(f"Found {len(hrefs)} active businesses")
+            
+            # Now navigate to each href
+            for href in hrefs:
+                await self.page.goto(href)
                 await self.page.wait_for_selector(".searchResultDetail")
-
+                # print("Loaded business detail page")
+                
                 business_data = {
                     "name": await self.page.text_content(".detailSection.corporationName p:nth-child(2)"),
                     "filing_number": await self.page.text_content(
@@ -92,54 +115,18 @@ class FloridaBusinessCrawler:
                         "label[for='Detail_EntityStateCountry'] + span"
                     ),
                     "principal_address": await self.page.text_content(
-                        ".detailSection span:first-child:has-text('Principal Address') + span div"
+                        ".detailSection:has(span:first-child:has-text('Principal Address')) span:nth-child(2) div"
                     ),
                     "mailing_address": await self.page.text_content(
-                        ".detailSection span:first-child:has-text('Mailing Address') + span div"
+                        ".detailSection:has(span:first-child:has-text('Mailing Address')) span:nth-child(2) div"
                     ),
                     "registered_agent_name": await self.page.text_content(
-                        ".detailSection span:first-child:has-text('Registered Agent Name') + span"
+                        ".detailSection:has(span:first-child:has-text('Registered Agent Name & Address')) span:nth-child(2)"
                     ),
                     "registered_agent_address": await self.page.text_content(
-                        ".detailSection span:first-child:has-text('Registered Agent Name') ~ span div"
+                        ".detailSection:has(span:first-child:has-text('Registered Agent Name & Address')) span:nth-child(3) div"
                     ),
                 }
-
-                # Get officers
-                officers = []
-                # First find the section with Officer/Director Detail
-                officer_sections = await self.page.query_selector_all(".detailSection")
-                for section in officer_sections:
-                    title_text = await section.query_selector("span:first-child")
-                    if title_text and "Officer/Director Detail" in await title_text.text_content():
-                        # Get all text content and process it
-                        section_content = await section.text_content()
-                        # Split by "Title" to get officer blocks
-                        officer_blocks = section_content.split("Title")
-                        
-                        for block in officer_blocks[1:]:  # Skip the header block
-                            lines = [line.strip() for line in block.split('\n') if line.strip()]
-                            if len(lines) >= 2:
-                                title = lines[0].strip()  # First line is the title
-                                # Find the name (it's usually after the title and before the address)
-                                name = None
-                                address_lines = []
-                                for line in lines[1:]:
-                                    if not name:
-                                        name = line
-                                    else:
-                                        address_lines.append(line)
-                                
-                                if name:
-                                    officer = {
-                                        "name": name,
-                                        "title": title,
-                                        "address": "\n".join(address_lines)
-                                    }
-                                    officers.append(officer)
-
-                business_data["officers"] = officers
-
                 # Get filing history
                 filing_history = []
                 # First find the section with Document Images
@@ -159,15 +146,21 @@ class FloridaBusinessCrawler:
                                         filing = {
                                             "filing_type": filing_type,
                                             "filing_date": self.parse_date(date_str),
-                                            "document_url": await link_element.get_attribute("href")
+                                            "document_url": f"{self.DOCUMENT_BASE_URL}{await link_element.get_attribute('href')}"
                                         }
+                                        # print("Document URL: ", filing["document_url"])
                                         filing_history.append(filing)
 
                 business_data["filing_history"] = filing_history
+
                 results.append(business_data)
-
-                await self.page.go_back()
-
+                # Navigate back to search results and perform search again
+                await self.page.goto(self.BASE_URL)
+                await self.page.fill("#SearchTerm", business_name)
+                await self.page.click("input[type='submit'][value='Search Now']")
+                await self.page.wait_for_selector("#search-results")
+            
+            # print(f"Results: {results}")
             return results
 
         except Exception as e:
